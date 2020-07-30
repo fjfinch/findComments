@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# USE SCRIPT SIMULTANEOUSLY BESIDES A WEB CONTENT SCANNER (ex. gobuster,dirbuster,dirsearch)
+# WHICH GIVES ITS OUTPUT AS INPUT FOR THIS SCRIPT
+# Ex. gobuster dir -u <IP> -w <WORDLIST> -en -o pages.txt
+# findComments pages.txt
+
+# (make sure output is curlable)
+
+# OR USE IT WITH A PRE MADE FILE WITH (curlable) PAGES
+# CTRL+C TO CANCEL
+
+#IS AN ARG (a file) GIVEN?
+if [ "$#" -ne 1 ]; then
+        printf "Invalid input\nUsage: %s <FILE>\n" "$(basename "$0")"
+        exit 1
+fi
+
+#ARG AS VARIABLE
+declare -r file="$1"
+
+#DOES THE FILE EXIST?
+if [ ! -f "$file" ]; then
+	printf "File doesn't exist\n"
+	exit 1
+fi
+
+#EXTRA VARIABLES
+declare -a list=()
+RED_UNDERLINED='\033[4;31m'
+RED='\033[0;31m'
+GREEN_BOLD='\033[1;32m'
+RESET='\033[0m'
+
+printf "[*] Reading pages from file '%s'..\n" "$file"
+
+#SCRIPT ALWAYS RUNNING (CTRL+C to end)
+while true
+do
+	#READ PAGES FROM FILE
+	while IFS= read -r page
+	do
+		#IF PAGE IS ALREADY SCANNED: IGNORE
+		if ! [[ "${list[@]}" =~ (^|[[:space:]])"$page"([[:space:]]|$) ]]; then
+			#ADD PAGE TO LIST, SO IT WONT BE SCANNED AGAIN
+			list+=("$page")
+
+			#CURL PAGE or DISPLAY ERROR
+			if ! output="$(curl -L -k -s "$page" 2>/dev/null)"; then
+				printf "${RED_UNDERLINED}Error reading page:${RESET} ${RED}%s${RESET}\n" "$page"
+				continue
+			fi
+
+			#OUTPUT PAGE NAME
+			printf "${GREEN_BOLD}%s${RESET}\n" "$page"
+
+			#REGEX FOR HTML,XML,Javascript,CSS,PHP,Java | MULTI-LINE COMMENTS
+			echo "$output" | awk '/<!--/,/-->/; /\/\*/,/\*\// {print $0}' | perl -pe 's@^.*?(<!--|/\*)@\1@; s@(.*)(-->|\*/).*$@\1\2@; s|(-->).*?(<!--)|\1 \2|g; s|(\*/).*?(/\*)|\1 \2|g'
+		fi
+	done < "$file"
+
+	#RUN SCRIPT EVERY SECOND
+	sleep 1
+done
