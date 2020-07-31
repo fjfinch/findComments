@@ -1,63 +1,62 @@
 #!/bin/bash
 
-# USE SCRIPT SIMULTANEOUSLY BESIDES A WEB CONTENT SCANNER (ex. gobuster,dirbuster,dirsearch)
-# WHICH GIVES ITS OUTPUT AS INPUT FOR THIS SCRIPT
-# Ex. gobuster dir -u <IP> -w <WORDLIST> -en -o pages.txt
-# findComments pages.txt
+# Use this script simultaneously besides a web content scanner (ex. gobuster,dirbuster,dirsearch)
+# Of which the scanner should give its output to this scripts input.
+# Ex. 	gobuster dir -u <IP> -w <WORDLIST> -en -o pages.txt
+# 	findComments pages.txt
 
-# (make sure output is curlable)
+# Or use the script with a pre made file with pages in it. Make sure output is curlable.
+# CTRL+C to cancel
+# ----------------------------------------------------------------------
 
-# OR USE IT WITH A PRE MADE FILE WITH (curlable) PAGES
-# CTRL+C TO CANCEL
+#COLORED OUTPUT
+declare -r RED='\033[0;31m'
+declare -r RED_BOLD='\033[1;31m'
+declare -r ORANGE_BOLD='\033[1;33m'
+declare -r BLUE_BOLD='\033[1;36m'
+declare -r RESET='\033[0m'
 
-#IS AN ARG (a file) GIVEN?
+#IS AN ARGUMENT (a file) GIVEN?
 if [ "$#" -ne 1 ]; then
-        printf "Invalid input\nUsage: %s <FILE>\n" "$(basename "$0")"
+        printf "${RED}Missing file.${RESET} Usage: %s <FILE>\n" "$(basename "$0")"
         exit 1
 fi
 
-#ARG AS VARIABLE
-declare -r file="$1"
+#VARIABLES
+declare -r FILE="$1"
+declare -a list=()
 
 #DOES THE FILE EXIST?
-if [ ! -f "$file" ]; then
-	printf "File doesn't exist\n"
+if [ ! -f "${FILE}" ]; then
+	printf "${RED}File doesn't exist${RESET}\n"
 	exit 1
 fi
 
-#EXTRA VARIABLES
-declare -a list=()
-RED_UNDERLINED='\033[4;31m'
-RED='\033[0;31m'
-GREEN_BOLD='\033[1;32m'
-RESET='\033[0m'
-
-printf "[*] Reading pages from file '%s'..\n" "$file"
+printf "[*] ${BLUE_BOLD}Reading file: '%s'...${RESET}\n" "${FILE}"
 
 #SCRIPT ALWAYS RUNNING (CTRL+C to end)
-while true
-do
+while true; do
 	#READ PAGES FROM FILE
-	while IFS= read -r page
-	do
+	while IFS= read -r page; do
 		#IF PAGE IS ALREADY SCANNED: IGNORE
-		if ! [[ "${list[@]}" =~ (^|[[:space:]])"$page"([[:space:]]|$) ]]; then
+		if ! [[ "${list[@]}" =~ (^|[[:space:]])"${page}"([[:space:]]|$) ]]; then
 			#ADD PAGE TO LIST, SO IT WONT BE SCANNED AGAIN
-			list+=("$page")
+			list+=("${page}")
 
 			#CURL PAGE or DISPLAY ERROR
-			if ! output="$(curl -L -k -s "$page" 2>/dev/null)"; then
-				printf "${RED_UNDERLINED}Error reading page:${RESET} ${RED}%s${RESET}\n" "$page"
+			if ! output="$(curl -L -k -s "${page}" 2>/dev/null)"; then
+				printf "${RED_BOLD}Error reading page: %s${RESET}\n" "${page}"
 				continue
 			fi
 
 			#OUTPUT PAGE NAME
-			printf "${GREEN_BOLD}%s${RESET}\n" "$page"
+			printf "${ORANGE_BOLD}%s${RESET}\n" "${page}"
 
 			#REGEX FOR HTML,XML,Javascript,CSS,PHP,Java | MULTI-LINE COMMENTS
-			echo "$output" | awk '/<!--/,/-->/; /\/\*/,/\*\// {print $0}' | perl -pe 's@^.*?(<!--|/\*)@\1@; s@(.*)(-->|\*/).*$@\1\2@; s|(-->).*?(<!--)|\1 \2|g; s|(\*/).*?(/\*)|\1 \2|g'
+			echo "${output}" | awk '/<!--/,/-->/; /\/\*/,/\*\// {print $0}' \
+			| perl -pe 's@^.*?(<!--|/\*)@\1@; s@(.*)(-->|\*/).*$@\1\2@; s|(-->).*?(<!--)|\1 \2|g; s|(\*/).*?(/\*)|\1 \2|g'
 		fi
-	done < "$file"
+	done < "${FILE}"
 
 	#RUN SCRIPT EVERY SECOND
 	sleep 1
