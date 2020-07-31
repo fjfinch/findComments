@@ -13,11 +13,9 @@ And because the script is made to be run besides a program, it wil not stop by i
 ## Context
 When doing Cyber Security CTFs (Capture the flags), you might end up working with a webserver. Sometimes there are comments left behind in the source code containing important info. This is really low-hanging fruit, and it is annoying to check every webpage. So a script it is.
 
-## How to
-### What does it need?
+## How to use?
 This script is made on/for (Debian) Kali Linux and uses `curl` to find the webpages source code.
 
-### How to use?
 Usage: `findComments <FILE>`
 
 Where \<FILE\> is a file containing curlable webpages. You can make the file yourself, of you can run this script simultaneously with a web scanner like gobuster:
