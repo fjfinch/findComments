@@ -1,12 +1,10 @@
 # findComments
 This script searches for comments on webpages source code. (The low-hanging fruit in CTFs). It needs a file with curlable pages as an argument. Use this script simultaneously besides a web content scanner (ex. gobuster,dirbuster,dirsearch). The scanner should give its output to this scripts input. See image below.
 Ex.:
-
 ```bash
 gobuster dir -u <IP> -w <WORDLIST> -en -o pages.txt`
 findComments pages.txt`
 ```
-
 Or use the script with a pre made file with pages in it. Make sure the output is curlable.
 And because the script is made to be run besides a program, it wil not stop by itself. So use CTRL+C to stop the script.
 
