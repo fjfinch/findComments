@@ -1,14 +1,5 @@
 #!/bin/bash
 
-# Use this script simultaneously besides a web content scanner (ex. gobuster,dirbuster,dirsearch)
-# Of which the scanner should give its output to this scripts input.
-# Ex. 	gobuster dir -u <IP> -w <WORDLIST> -en -o pages.txt
-# 	findComments pages.txt
-
-# Or use the script with a pre made file with pages in it. Make sure output is curlable.
-# CTRL+C to cancel
-# ----------------------------------------------------------------------
-
 #COLORED OUTPUT
 declare -r RED='\033[0;31m'
 declare -r RED_BOLD='\033[1;31m'
@@ -23,7 +14,9 @@ if [ "$#" -ne 1 ]; then
 fi
 
 #VARIABLES
+printf "Extra search terms? (seperate by space): ";read -r -a INPUT
 declare -r FILE="$1"
+declare -a BLACKLIST=(pdf jpg jpeg png gif tiff mp3 mp4 eot ttf otf pfb svg woff woff2)
 declare -a list=()
 
 #DOES THE FILE EXIST?
@@ -32,32 +25,74 @@ if [ ! -f "${FILE}" ]; then
 	exit 1
 fi
 
+page_comment () {
+	echo "${output}" | perl -pe 's|(<!--[^>])|\n\1|g' | awk '/<!--/,/-->/' | perl -pe 's|(.*)(-->).*$|\1\2|'
+
+	style="(echo "${output}" | perl -pe 's|(<style.*?>)|\n\1|g' | awk '/<style.*?>/,/<\/style>/' | perl -pe 's|(.*)(<\/style>).*$|\1\2|')"
+	if [ -n "${style}" ];then
+		echo "${style}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
+	fi
+
+	script="(echo "${output}" | perl -pe 's|(<script.*?>)|\n\1|g' | awk '/<script.*?>/,/<\/script>/' | perl -pe 's|(.*)(<\/script>).*$|\1\2|')"
+	if [ -n "${script}" ];then
+		echo "${script}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
+		#echo "${script}" | grep -o "//.*"
+	fi
+}
+
 printf "[*] ${BLUE_BOLD}Reading file: '%s'...${RESET}\n" "${FILE}"
 
-#SCRIPT ALWAYS RUNNING (CTRL+C to end)
-while true; do
-	#READ PAGES FROM FILE
-	while IFS= read -r page; do
-		#IF PAGE IS ALREADY SCANNED: IGNORE
-		if ! [[ "${list[@]}" =~ (^|[[:space:]])"${page}"([[:space:]]|$) ]]; then
-			#ADD PAGE TO LIST, SO IT WONT BE SCANNED AGAIN
-			list+=("${page}")
+#READ PAGES FROM FILE
+while IFS= read -r page; do
+	#SANITIZE URL
+	page="$(echo "${page}" | cut -f1 -d'?')"
 
-			#CURL PAGE or DISPLAY ERROR
-			if ! output="$(curl -L -k -s "${page}" 2>/dev/null)"; then
-				printf "${RED_BOLD}Error reading page: %s${RESET}\n" "${page}"
-				continue
+	#ADD PAGE TO LIST - IF PAGE IS ALREADY SCANNED: IGNORE
+	if [[ "${list[@]}" =~ (^|[[:space:]])"${page}"([[:space:]]|$) ]]; then
+		continue
+	fi
+	list+=("${page}")
+
+	#CHECK FOR BLACKLISTED EXTENSIONS (WHICH CANT HAVE COMMENTS)
+	extension="${page##*.}"
+	if [[ "${BLACKLIST}" =~ "${extension,,}" ]]; then
+		continue
+	fi
+
+	#CURL PAGE or DISPLAY ERROR
+	if ! output="$(curl -k -L -m 4 -s "${page}" 2>/dev/null)"; then
+		printf "${RED_BOLD}Error reading page: %s${RESET}\n" "${page}"
+		continue
+	fi
+
+        #OUTPUT PAGE NAME
+        printf "${ORANGE_BOLD}%s${RESET}\n" "${page}"
+
+	case "${extension,,}" in
+		"html"*~|"htm"*~|"xml"*~|"php"*~|"asp"*~|"aspx"*~|"jsp"*~)
+			page_comment
+		;;
+		"js"*~|"java"*~|"class"*~|"css"*~|"c"*~|"cc"*~|"cpp"*~|"sql"*~)
+			echo "${output}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
+
+			if [ "${extension,,}" != "css" ] && [ "${extension,,}" != "sql" ];then
+				echo "${script}" | grep -o "//.*"
 			fi
 
-			#OUTPUT PAGE NAME
-			printf "${ORANGE_BOLD}%s${RESET}\n" "${page}"
+			if [ "${extension,,}" == "sql" ];then
+				echo "${script}" | grep -o "\-\-.*"
+			fi
+		;;
+		"py"*~)
+			echo "${script}" | grep -o "#.*"
+		;;
+		*)
+			page_comment
+			#echo "${output}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
+	esac
 
-			#REGEX FOR HTML,XML,Javascript,CSS,PHP,Java | MULTI-LINE COMMENTS
-			echo "${output}" | awk '/<!--/,/-->/; /\/\*/,/\*\// {print $0}' \
-			| perl -pe 's@^.*?(<!--|/\*)@\1@; s@(.*)(-->|\*/).*$@\1\2@; s|(-->).*?(<!--)|\1 \2|g; s|(\*/).*?(/\*)|\1 \2|g'
-		fi
-	done < "${FILE}"
-
-	#RUN SCRIPT EVERY SECOND
-	sleep 1
-done
+	for keyword in "${INPUT[@]}"
+	do
+		echo "${output}" | grep -i "${keyword}"
+	done
+done < "${FILE}"
