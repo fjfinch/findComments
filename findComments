@@ -25,18 +25,22 @@ if [ ! -f "${FILE}" ]; then
 	exit 1
 fi
 
+single_comment () {
+	echo "${1}" | grep -o "${2}.*"
+}
+
 page_comment () {
 	echo "${output}" | perl -pe 's|(<!--[^>])|\n\1|g' | awk '/<!--/,/-->/' | perl -pe 's|(.*)(-->).*$|\1\2|'
 
-	style="(echo "${output}" | perl -pe 's|(<style.*?>)|\n\1|g' | awk '/<style.*?>/,/<\/style>/' | perl -pe 's|(.*)(<\/style>).*$|\1\2|')"
+	style="$(echo "${output}" | perl -pe 's|(<style.*?>)|\n\1|g' | awk '/<style.*?>/,/<\/style>/' | perl -pe 's|(.*)(<\/style>).*$|\1\2|')"
 	if [ -n "${style}" ];then
 		echo "${style}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
 	fi
 
-	script="(echo "${output}" | perl -pe 's|(<script.*?>)|\n\1|g' | awk '/<script.*?>/,/<\/script>/' | perl -pe 's|(.*)(<\/script>).*$|\1\2|')"
+	script="$(echo "${output}" | perl -pe 's|(<script.*?>)|\n\1|g' | awk '/<script.*?>/,/<\/script>/' | perl -pe 's|(.*)(<\/script>).*$|\1\2|')"
 	if [ -n "${script}" ];then
 		echo "${script}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
-		#echo "${script}" | grep -o "//.*"
+		#single_comment "${script}" "//"
 	fi
 }
 
@@ -69,26 +73,26 @@ while IFS= read -r page; do
         printf "${ORANGE_BOLD}%s${RESET}\n" "${page}"
 
 	case "${extension,,}" in
-		"html"*~|"htm"*~|"xml"*~|"php"*~|"asp"*~|"aspx"*~|"jsp"*~)
+		"html"|"htm"|"xml"|"php"|"asp"|"aspx"|"jsp")
 			page_comment
 		;;
-		"js"*~|"java"*~|"class"*~|"css"*~|"c"*~|"cc"*~|"cpp"*~|"sql"*~)
+		"js"|"java"|"class"|"css"|"c"|"cc"|"cpp"|"sql")
 			echo "${output}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
 
 			if [ "${extension,,}" != "css" ] && [ "${extension,,}" != "sql" ];then
-				echo "${script}" | grep -o "//.*"
+				single_comment "${output}" "//"
 			fi
 
 			if [ "${extension,,}" == "sql" ];then
-				echo "${script}" | grep -o "\-\-.*"
+				single_comment "${output}" "\-\-"
 			fi
 		;;
-		"py"*~)
-			echo "${script}" | grep -o "#.*"
+		"py")
+			single_comment "${output}" "#"
 		;;
 		*)
 			page_comment
-			#echo "${output}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
+			echo "${output}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
 	esac
 
 	for keyword in "${INPUT[@]}"
