@@ -16,7 +16,7 @@ fi
 #VARIABLES
 printf "Extra search terms? (seperate by space): ";read -r -a INPUT
 declare -r FILE="$1"
-declare -a BLACKLIST=(pdf jpg jpeg png gif tiff mp3 mp4 eot ttf otf pfb svg woff woff2)
+declare -a BLACKLIST=("pdf" "jpg" "jpeg" "png" "gif" "tiff" "mp3" "mp4" "eot" "ttf" "otf" "pfb" "svg" "woff" "woff2")
 declare -a list=()
 
 #DOES THE FILE EXIST?
