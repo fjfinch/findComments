@@ -1,29 +1,33 @@
 #!/bin/bash
 
 #COLORED OUTPUT
-declare -r RED='\033[0;31m'
-declare -r RED_BOLD='\033[1;31m'
-declare -r ORANGE_BOLD='\033[1;33m'
-declare -r BLUE_BOLD='\033[1;36m'
-declare -r RESET='\033[0m'
+readonly RED='\033[0;31m'
+readonly RED_BOLD='\033[1;31m'
+readonly ORANGE_BOLD='\033[1;33m'
+readonly BLUE_BOLD='\033[1;36m'
+readonly RESET='\033[0m'
 
-#IS AN ARGUMENT (a file) GIVEN?
-if [ "$#" -ne 1 ]; then
-        printf "${RED}Missing file.${RESET} Usage: %s <FILE>\n" "$(basename "$0")"
+#IS AN ARGUMENT GIVEN?
+if [ "${#}" -ne 1 ]; then
+        printf "${RED}Missing file${RESET}\nUsage: %s <FILE>\n" "$(basename "${0}")"
         exit 1
 fi
 
+#----------------------------------------------------------------------
+
 #VARIABLES
 printf "Extra search terms? (seperate by space): ";read -r -a INPUT
-declare -r FILE="$1"
-declare -a BLACKLIST=("pdf" "jpg" "jpeg" "png" "gif" "tiff" "mp3" "mp4" "eot" "ttf" "otf" "pfb" "svg" "woff" "woff2")
-declare -a list=()
+readonly FILE="${1}"
+readonly BLACKLIST=("pdf" "jpg" "jpeg" "png" "gif" "tiff" "mp3" "mp4" "eot" "ttf" "otf" "pfb" "svg" "woff" "woff2")
+list=()
 
 #DOES THE FILE EXIST?
 if [ ! -f "${FILE}" ]; then
 	printf "${RED}File doesn't exist${RESET}\n"
 	exit 1
 fi
+
+#----------------------------------------------------------------------
 
 single_comment () {
 	echo "${1}" | grep -o "${2}.*"
@@ -95,6 +99,7 @@ while IFS= read -r page; do
 			echo "${output}" | perl -pe 's|(/\*)|\n\1|g' | awk '/\/\*/,/\*\//' | perl -pe 's|(.*)(\*/).*$|\1\2|'
 	esac
 
+	#SEARCH FOR THE EXTRA GIVEN KEYWORD
 	for keyword in "${INPUT[@]}"
 	do
 		echo "${output}" | grep -i "${keyword}"
