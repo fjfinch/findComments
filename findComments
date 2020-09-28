@@ -15,17 +15,19 @@ fi
 
 #----------------------------------------------------------------------
 
-#VARIABLES
-printf "Extra search terms? (seperate by space): ";read -r -a INPUT
+#ARGUMENT AS VARIABLE
 readonly FILE="${1}"
-readonly BLACKLIST=("pdf" "jpg" "jpeg" "png" "gif" "tiff" "mp3" "mp4" "eot" "ttf" "otf" "pfb" "svg" "woff" "woff2")
-list=()
 
 #DOES THE FILE EXIST?
 if [ ! -f "${FILE}" ]; then
 	printf "${RED}File doesn't exist${RESET}\n"
 	exit 1
 fi
+
+#OTHER VARIABLES
+printf "Extra search terms? (seperate by space): ";read -r -a INPUT
+readonly BLACKLIST=("pdf" "jpg" "jpeg" "png" "gif" "tiff" "mp3" "mp4" "eot" "ttf" "otf" "pfb" "svg" "woff" "woff2")
+list=()
 
 #----------------------------------------------------------------------
 
